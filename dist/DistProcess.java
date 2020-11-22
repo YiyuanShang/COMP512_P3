@@ -1,12 +1,14 @@
-import java.io.*;
-
-import java.util.*;
-
-// To get the name of the host.
-import java.net.*;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 //To get the process id.
-import java.lang.management.*;
+import java.lang.management.ManagementFactory;
+// To get the name of the host.
+import java.net.UnknownHostException;
+import java.util.List;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -26,12 +28,13 @@ import org.apache.zookeeper.KeeperException.Code;
 //		you manage the code more modularly.
 //	REMEMBER !! ZK client library is single thread - Watches & CallBacks should not be used for time consuming tasks.
 //		Ideally, Watches & CallBacks should only be used to assign the "work" to a separate thread inside your program.
-public class DistProcess implements Watcher
-																		, AsyncCallback.ChildrenCallback
+public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback
 {
 	ZooKeeper zk;
 	String zkServer, pinfo;
 	boolean isMaster=false;
+	ChildrenCache workersCache;
+
 
 	DistProcess(String zkhost)
 	{
@@ -50,6 +53,7 @@ public class DistProcess implements Watcher
 			isMaster=true;
 			getTasks(); // Install monitoring on any new tasks that will be created.
 									// TODO monitor for worker tasks?
+			getWorkers();
 		}catch(NodeExistsException nee)
 		{ isMaster=false; } // TODO: What else will you need if this was a worker process?
 
@@ -61,6 +65,78 @@ public class DistProcess implements Watcher
 	{
 		zk.getChildren("/dist40/tasks", this, this, null);  
 	}
+
+	void getWorkers(){
+		zk.getChildren("/dist40/workers", workersChangeWatcher, workersGetChildrenCallback, null);
+	}
+
+	ChildrenCallback workersGetChildrenCallback = new workersGetChildrenCallback(){
+		public void processResult(int rc, String path, Object ctx, List<String> children){
+			System.out.println("DISTAPP : processResult : " + rc + ":" + path + ":" + ctx);
+			System.out.println("Sucessfully got a list of workers: " + children.size() + " workers" );
+			try{
+				reassginAndSet(children);
+			}
+				catch(NodeExistsException nee){System.out.println(nee);}
+				catch(KeeperException ke){System.out.println(ke);}
+				catch(InterruptedException ie){System.out.println(ie);}
+				catch(IOException io){System.out.println(io);}
+				catch(ClassNotFoundException cne){System.out.println(cne);}
+	}
+	};
+
+	/*
+	* Assigning tasks
+	*/
+	void reassignAndSet(List<String> children){
+		List<String> toProcess;
+        
+        if(workersCache == null) {
+            workersCache = new ChildrenCache(children);
+            toProcess = null;
+        } else {
+            System.out.println("Removing and setting");
+            toProcess = workersCache.removedAndSet( children );
+        }
+        
+        if(toProcess != null) {
+			// There are some dead workers needed to be processed
+			// Get assigned tasks
+			// Get task data
+			// Move task to the list of unassigned tasks
+			// Delete assignment
+            for(String worker : toProcess){
+                getAbsentWorkerTasks(worker);
+            }
+        }
+	}
+
+	void getAbsentWorkerTasks(String worker){
+        zk.getChildren("/assign/" + worker, false, workerAssignmentCallback, null);
+	}
+	
+	ChildrenCallback workerAssignmentCallback = new ChildrenCallback() {
+        public void processResult(int rc, String path, Object ctx, List<String> children){
+            try{
+				System.out.println("Succesfully got a list of assignments: " 
+				+ children.size() 
+				+ " tasks");
+                
+                /*
+                 * Reassign the tasks of the absent worker.  
+                 */
+                
+                for(String task: children) {
+                    getDataReassign(path + "/" + task, task);                    
+                }
+			}
+			catch(KeeperException ke){System.out.println(ke);}
+        }
+    };
+
+
+		
+	
 
 	// Try to become the master.
 	void runForMaster() throws UnknownHostException, KeeperException, InterruptedException

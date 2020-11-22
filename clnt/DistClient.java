@@ -13,9 +13,7 @@ import org.apache.zookeeper.data.*;
 import org.apache.zookeeper.KeeperException.Code;
 
 // You may have to add other interfaces such as for threading, etc., as needed.
-public class DistClient implements Watcher
-												, AsyncCallback.StatCallback
-												, AsyncCallback.DataCallback
+public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCallback.DataCallback
 {
 	ZooKeeper zk;
 	String zkServer, taskNodeName;
@@ -31,9 +29,7 @@ public class DistClient implements Watcher
 		//System.out.println("DISTAPP : Client information : " + pinfo);
 	}
 
-	void startClient() throws IOException
-														//, UnknownHostException
-														, KeeperException, InterruptedException
+	void startClient() throws IOException//, UnknownHostException, KeeperException, InterruptedException
 	{
 		zk = new ZooKeeper(zkServer, 1000, this); //connect to ZK.
 
