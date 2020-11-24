@@ -35,7 +35,7 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 		} catch (NodeExistsException nee) {
 			isMaster = false;
 			runForWorker();
-			getTasks();
+			getTasks(zkServer);
 		}
 		System.out.println("DISTAPP : Role : " + " I will be functioning as " + (isMaster ? "master" : "worker"));
 	}
@@ -174,10 +174,6 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 		if (e.getType() == Watcher.Event.EventType.NodeCreated) {
 			getTasks(zkServer);
 		}
-	};
-
-	ChildrenCallback assignedTasksCallback = (int rc, String path, Object ctx, List<String> workers) -> {
-
 	};
 
 	public void process(WatchedEvent e) {
