@@ -15,6 +15,9 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException.*;
 import org.apache.zookeeper.data.*;
 import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.AsyncCallback.DataCallback;
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
+import org.apache.zookeeper.AsyncCallback.StringCallback;
 
 // TODO
 // Replace XX with your group number.
@@ -85,54 +88,9 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback
 	}
 	};
 
-	/*
-	* Assigning tasks
-	*/
-	void reassignAndSet(List<String> children){
-		List<String> toProcess;
-        
-        if(workersCache == null) {
-            workersCache = new ChildrenCache(children);
-            toProcess = null;
-        } else {
-            System.out.println("Removing and setting");
-            toProcess = workersCache.removedAndSet( children );
-        }
-        
-        if(toProcess != null) {
-			// There are some dead workers needed to be processed
-			// Get assigned tasks
-			// Get task data
-			// Move task to the list of unassigned tasks
-			// Delete assignment
-            for(String worker : toProcess){
-                getAbsentWorkerTasks(worker);
-            }
-        }
-	}
 
-	void getAbsentWorkerTasks(String worker){
-        zk.getChildren("/assign/" + worker, false, workerAssignmentCallback, null);
-	}
 	
-	ChildrenCallback workerAssignmentCallback = new ChildrenCallback() {
-        public void processResult(int rc, String path, Object ctx, List<String> children){
-            try{
-				System.out.println("Succesfully got a list of assignments: " 
-				+ children.size() 
-				+ " tasks");
-                
-                /*
-                 * Reassign the tasks of the absent worker.  
-                 */
-                
-                for(String task: children) {
-                    getDataReassign(path + "/" + task, task);                    
-                }
-			}
-			catch(KeeperException ke){System.out.println(ke);}
-        }
-    };
+
 
 
 		
@@ -188,6 +146,19 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback
 		//		The worker must invoke the "compute" function of the Task send by the client.
 		//What to do if you do not have a free worker process?
 		System.out.println("DISTAPP : processResult : " + rc + ":" + path + ":" + ctx);
+		List<String> toProcess;
+		if(tasksCache == null) {
+			tasksCache = new ChildrenCache(children);
+			
+			toProcess = children;
+		} else {
+			toProcess = tasksCache.addedAndSet( children );
+		}
+		
+		if(toProcess != null){
+			assignTasks(toProcess);
+		} 
+
 		for(String c: children)
 		{
 			System.out.println(c);
@@ -226,6 +197,79 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback
 		}
 	}
 
+	void assignTasks(List<String> tasks) {
+        for(String task : tasks){
+            getTaskData(task);
+        }
+	}
+
+	void getTaskData(String task) {
+        zk.getData("/dist/tasks/" + task, 
+                false, 
+                taskDataCallback, 
+                task);
+	}
+	
+	DataCallback taskDataCallback = new DataCallback() {
+        public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat)  {
+            try{
+				/*
+                 * Choose worker at random.
+                 */
+                List<String> list = workersCache.getList();
+                String designatedWorker = list.get(random.nextInt(list.size()));
+                
+                /*
+                 * Assign task to randomly chosen worker.
+                 */
+                String assignmentPath = "/dist40/assign/" + 
+                        designatedWorker + 
+                        "/" + 
+                        (String) ctx;
+                System.out.println("Assignment path: " + assignmentPath );
+                createAssignment(assignmentPath, data);
+			}
+			catch(KeeperException ke){System.out.println(ke);}
+        }
+    };
+	
+	void createAssignment(String path, byte[] data){
+        zk.create(path, 
+                data, 
+                Ids.OPEN_ACL_UNSAFE, 
+                CreateMode.PERSISTENT,
+                assignTaskCallback, 
+                data);
+	}
+
+	StringCallback assignTaskCallback = new StringCallback() {
+        public void processResult(int rc, String path, Object ctx, String name) {
+    
+			System.out.println("Task assigned correctly: " + name);
+            deleteTask(name.substring( name.lastIndexOf("/") + 1));
+                
+                
+        }
+	};
+
+	VoidCallback taskDeleteCallback = new VoidCallback(){
+        public void processResult(int rc, String path, Object ctx){
+			System.out.println("Successfully deleted " + path);
+        }
+    };
+	
+	/*
+     * Once assigned, we delete the task from /tasks
+     */
+    void deleteTask(String name){
+        zk.delete("dist40/tasks/" + name, -1, taskDeleteCallback, null);
+	}
+	
+
+
+
+
+	
 	public static void main(String args[]) throws Exception
 	{
 		//Create a new process
