@@ -88,10 +88,10 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 			try {
 				List<String> assignedTasks = zk.getChildren("/dist40/workers/" + worker, taskAssignedWatcher, null);
 				if (assignedTasks.isEmpty()) {
-					List<String> freeTasks = zk.getChildren("/dist40/tasks", null);
+					List<String> freeTasks = zk.getChildren("/dist40/unassignedTasks", null);
 					String assignableTask = freeTasks.get(0);
-					byte[] taskSerial = zk.getData("/dist40/tasks/" + assignableTask, false, null);
-					zk.delete("/dist40/tasks/" + assignableTask, -1, null, null);
+					byte[] taskSerial = zk.getData("/dist40/unassignedTasks/" + assignableTask, false, null);
+					zk.delete("/dist40/unassignedTasks/" + assignableTask, -1, null, null);
 					zk.create("/dist40/workers/" + worker + "/" + assignableTask, taskSerial, Ids.OPEN_ACL_UNSAFE,
 							CreateMode.PERSISTENT_SEQUENTIAL);
 				}
@@ -131,7 +131,43 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	 */
 
 	void getTasks(String zkServer) {
-		zk.getChildren("/dist40/workers/" + zkServer, assignedTasksWatcher, assignedTasksCallback, null);
+		try {
+			List<String> assignedTasks = zk.getChildren("/dist40/workers/" + zkServer, assignedTasksWatcher);
+			String task = assignedTasks.get(0);
+			byte[] taskSerial = zk.getData("/dist40/workers/" + zkServer + "/" + task, false, null);
+
+			// Re-construct our task object.
+			ByteArrayInputStream bis = new ByteArrayInputStream(taskSerial);
+			ObjectInput in = new ObjectInputStream(bis);
+			DistTask dt = (DistTask) in.readObject();
+
+			// Execute the task.
+			// TODO: Again, time consuming stuff. Should be done by some other thread and
+			// not inside a callback!
+			dt.compute();
+
+			// Serialize our Task object back to a byte array!
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutputStream oos = new ObjectOutputStream(bos);
+			oos.writeObject(dt);
+			oos.flush();
+			taskSerial = bos.toByteArray();
+
+			// Store it inside the result node.
+			zk.create("/dist40/tasks/" + task + "/result", taskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			zk.delete("/dist40/workers/" + zkServer + "/" + task, -1, null, null);
+
+		} catch (NodeExistsException nee) {
+			System.out.println(nee);
+		} catch (KeeperException ke) {
+			System.out.println(ke);
+		} catch (InterruptedException ie) {
+			System.out.println(ie);
+		} catch (IOException io) {
+			System.out.println(io);
+		} catch (ClassNotFoundException cne) {
+			System.out.println(cne);
+		}
 	}
 
 	Watcher assignedTasksWatcher = (WatchedEvent e) -> {
