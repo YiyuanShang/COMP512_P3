@@ -17,7 +17,7 @@ import org.apache.zookeeper.KeeperException.Code;
 public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCallback.DataCallback {
 
 	ZooKeeper zk;
-	String zkServer, taskNodeName;
+	String zkServer, taskNodeName, unassignedTaskNodeName;
 	// String pinfo;
 	DistTask dTask;
 
@@ -44,10 +44,12 @@ public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCal
 		// TODO replace XX with your group number.
 		taskNodeName = zk.create("/dist40/tasks/task-", dTaskSerial, Ids.OPEN_ACL_UNSAFE,
 				CreateMode.PERSISTENT_SEQUENTIAL);
-		zk.create("/dist40/unassignedTasks/task-", dTaskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+		unassignedTaskNodeName = zk.create("/dist40/unassignedTasks/task-", dTaskSerial, Ids.OPEN_ACL_UNSAFE, 
+				CreateMode.PERSISTENT_SEQUENTIAL);
 		// taskNodeName = zk.create("/dist40/tasks/task-", pinfo.getBytes(),
 		// Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 		System.out.println("DISTAPP : TaskNode : " + taskNodeName);
+		System.out.println("DISTAPP : TaskNode : " + unassignedTaskNodeName);
 
 		// Place watch for the result znode which will be created under our task znode.
 		zk.exists(taskNodeName + "/result", this, this, null);
@@ -146,6 +148,7 @@ public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCal
 		// Cleanup, we do not need our task and result nodes anymore.
 		zk.delete(taskNodeName + "/result", -1, null, null);
 		zk.delete(taskNodeName, -1, null, null);
+		zl.delete(unassignedTaskNodeName, -1, null, null);
 
 		// Free the main thread to go ahead and terminate.
 		synchronized (this) {

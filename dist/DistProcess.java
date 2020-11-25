@@ -15,6 +15,7 @@ import org.apache.zookeeper.data.*;
 import org.apache.zookeeper.KeeperException.Code;
 
 public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
+	
 	ZooKeeper zk;
 	String zkServer, pinfo;
 	boolean isMaster = false;
@@ -25,9 +26,18 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 		System.out.println("DISTAPP : ZK Connection information : " + zkServer);
 		System.out.println("DISTAPP : Process information : " + pinfo);
 	}
+	// public void run(){
+	// 	try{
+	// 		startProcess();
+	// 	}
+	// 	catch(Exception e){
+	// 		e.printStackTrace();
+	// 	}
+		
+	// }
 
 	void startProcess() throws IOException, UnknownHostException, KeeperException, InterruptedException {
-		zk = new ZooKeeper(zkServer, 1000, this); // connect to ZK.
+		zk = new ZooKeeper(zkServer, 100000, this); // connect to ZK.
 		try {
 			runForMaster();
 			isMaster = true;
@@ -183,7 +193,7 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	public void processResult(int rc, String path, Object ctx, List<String> children) {
 		System.out.println("DISTAPP : Event received : ");
 	}
-
+	
 	public static void main(String args[]) throws Exception {
 		// Create a new process
 		// Read the ZooKeeper ensemble information from the environment variable.
@@ -192,6 +202,12 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 
 		// Replace this with an approach that will make sure that the process is up and
 		// running forever.
-		Thread.sleep(10000);
+		Thread.sleep(1000000);
+		// Thread t = new Thread(dt);
+		// t.start();
+		// while(t.isAlive()){
+		// 	Thread.sleep(10000);
+		// }
+		
 	}
 }
