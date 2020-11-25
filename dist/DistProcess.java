@@ -1,23 +1,18 @@
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-//To get the process id.
-import java.lang.management.ManagementFactory;
+import java.io.*;
+
+import java.util.*;
+
 // To get the name of the host.
-import java.net.UnknownHostException;
-import java.util.List;
+import java.net.*;
+
+//To get the process id.
+import java.lang.management.*;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.KeeperException.*;
 import org.apache.zookeeper.data.*;
 import org.apache.zookeeper.KeeperException.Code;
-import org.apache.zookeeper.AsyncCallback.DataCallback;
-import org.apache.zookeeper.AsyncCallback.VoidCallback;
-import org.apache.zookeeper.AsyncCallback.StringCallback;
 
 public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	ZooKeeper zk;
@@ -51,33 +46,6 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	 ****************************************************
 	 ****************************************************
 	 */
-
-	void getWorkers(){
-		zk.getChildren("/dist40/workers", workersChangeWatcher, workersGetChildrenCallback, null);
-	}
-
-	ChildrenCallback workersGetChildrenCallback = new workersGetChildrenCallback(){
-		public void processResult(int rc, String path, Object ctx, List<String> children){
-			System.out.println("DISTAPP : processResult : " + rc + ":" + path + ":" + ctx);
-			System.out.println("Sucessfully got a list of workers: " + children.size() + " workers" );
-			try{
-				reassginAndSet(children);
-			}
-				catch(NodeExistsException nee){System.out.println(nee);}
-				catch(KeeperException ke){System.out.println(ke);}
-				catch(InterruptedException ie){System.out.println(ie);}
-				catch(IOException io){System.out.println(io);}
-				catch(ClassNotFoundException cne){System.out.println(cne);}
-	}
-	};
-
-
-	
-
-
-
-		
-	
 
 	// Try to become the master.
 	void runForMaster() throws UnknownHostException, KeeperException, InterruptedException {
