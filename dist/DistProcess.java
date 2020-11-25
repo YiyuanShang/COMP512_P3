@@ -35,7 +35,6 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 		} catch (NodeExistsException nee) {
 			isMaster = false;
 			runForWorker();
-			getTasks(zkServer);
 		}
 		System.out.println("DISTAPP : Role : " + " I will be functioning as " + (isMaster ? "master" : "worker"));
 	}
