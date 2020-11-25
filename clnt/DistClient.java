@@ -30,7 +30,7 @@ public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCal
 	}
 
 
-	void startClient() throws IOException, UnknownHostException, KeeperException, InterruptedException {
+	void startClient() throws IOException, KeeperException, InterruptedException {
 		zk = new ZooKeeper(zkServer, 1000, this); // connect to ZK.
 
 		// Serialize our Task object to a byte array!
@@ -155,7 +155,7 @@ public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCal
 
 	// Called after the computation is done at worker and result is send back here
 	// Get back the Task Object now, which should have our results.
-	public DistTask f() {
+	public DistTask getDistTask() {
 		return dTask;
 	}
 

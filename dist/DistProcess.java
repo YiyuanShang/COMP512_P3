@@ -100,11 +100,12 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 				System.out.println(ke);
 			} catch (InterruptedException ie) {
 				System.out.println(ie);
-			} catch (IOException io) {
-				System.out.println(io);
-			} catch (ClassNotFoundException cne) {
-				System.out.println(cne);
 			}
+			//  catch (IOException io) {
+			// 	System.out.println(io);
+			// } catch (ClassNotFoundException cne) {
+			// 	System.out.println(cne);
+			// }
 		}
 	};
 
