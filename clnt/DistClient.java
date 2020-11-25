@@ -148,7 +148,7 @@ public class DistClient implements Watcher, AsyncCallback.StatCallback, AsyncCal
 		// Cleanup, we do not need our task and result nodes anymore.
 		zk.delete(taskNodeName + "/result", -1, null, null);
 		zk.delete(taskNodeName, -1, null, null);
-		zl.delete(unassignedTaskNodeName, -1, null, null);
+		zk.delete(unassignedTaskNodeName, -1, null, null);
 
 		// Free the main thread to go ahead and terminate.
 		synchronized (this) {
