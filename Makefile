@@ -1,3 +1,3 @@
 clean:
-	rm -f clnt/*.class task/*.class dist/*.class
+	rm -f clnt/*.class dist/*.class task/*.class
 

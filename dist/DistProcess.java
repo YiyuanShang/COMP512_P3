@@ -20,7 +20,7 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	
 	ZooKeeper zk;
 	String zkServer, pinfo;
-	String server;
+	String watcherPath;
 	boolean isMaster = false;
 
 	DistProcess(String zkhost) {
@@ -123,14 +123,14 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 							byte[] taskSerial = zk.getData("/dist40/unassignedTasks/" + assignableTask, false, null);
 							zk.delete("/dist40/unassignedTasks/" + assignableTask, -1, null, null);
 							zk.create("/dist40/workers/" + worker + "/" + assignableTask, taskSerial, Ids.OPEN_ACL_UNSAFE,
-								CreateMode.PERSISTENT_SEQUENTIAL);
+								CreateMode.PERSISTENT);
 
 							System.out.println("DISTAPP : Worker " + worker + " got task " + assignableTask);
 							//getTasks(worker);
 						}
-						//delegateWorkers();
-						
+							
 					}
+					delegateWorkers();
 				} catch (NodeExistsException nee) {
 					System.out.println(nee);
 				} catch (KeeperException ke) {
@@ -157,18 +157,20 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	 ****************************************************
 	 */
 	void runForWorker() throws UnknownHostException, KeeperException, InterruptedException {
-		InetAddress myIP = InetAddress.getLocalHost();
-		String hostAdress = myIP.getHostAddress();
-		server = hostAdress;
-		System.out.println("IP is: " + hostAdress);
-		String newNodePath = "/dist40/workers/" + hostAdress;
+		// InetAddress myIP = InetAddress.getLocalHost();
+		// String hostAdress = myIP.getHostAddress();
+		
+		// System.out.println("IP is: " + hostAdress);
+		String newNodePath = "/dist40/workers/worker-";
 		System.out.println(newNodePath);
 		// String newNode = zk.create("/dist40/workers/testname", pinfo.getBytes(), Ids.OPEN_ACL_UNSAFE,
 		// 		CreateMode.PERSISTENT_SEQUENTIAL);
 		String newNode = zk.create(newNodePath, pinfo.getBytes(), Ids.OPEN_ACL_UNSAFE,
-		 		CreateMode.PERSISTENT);
+		 		CreateMode.PERSISTENT_SEQUENTIAL);
 		System.out.println("DISTAPP: created worker " + newNode);
-		getTasks(hostAdress);
+		watcherPath = newNode;
+		getTasks(watcherPath);
+		
 
 	
 	}
@@ -181,17 +183,17 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	 ****************************************************
 	 */
 
-	void getTasks(String server) {
+	void getTasks(String path) {
 		try {
-			List<String> assignedTasks = zk.getChildren("/dist40/workers/" + server, assignedTasksWatcher);
+			List<String> assignedTasks = zk.getChildren(path, assignedTasksWatcher);
 			if(assignedTasks.isEmpty()){
-				System.out.println("DISTAPP : no assigned task for worker " + server);
+				System.out.println("DISTAPP : no assigned task for worker " + watcherPath);
 				
 			}
 			else{
 				String task = assignedTasks.get(0);
 				System.out.println("I AM HERE!!!");
-				byte[] taskSerial = zk.getData("/dist40/workers/" + server + "/" + task, false, null);
+				byte[] taskSerial = zk.getData(path + "/" + task, false, null);
 	
 				// Re-construct our task object.
 				ByteArrayInputStream bis = new ByteArrayInputStream(taskSerial);
@@ -212,7 +214,7 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	
 				// Store it inside the result node.
 				zk.create("/dist40/tasks/" + task + "/result", taskSerial, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-				zk.delete("/dist40/workers/" + server + "/" + task, -1, null, null);
+				zk.delete(path + "/" + task, -1, null, null);
 			}
 			
 
@@ -230,8 +232,8 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 	}
 
 	Watcher assignedTasksWatcher = (WatchedEvent e) -> {
-		if (e.getType() == Watcher.Event.EventType.NodeCreated) {
-			getTasks(server);
+		if (e.getType() == Watcher.Event.EventType.NodeChildrenChanged) {
+			getTasks(watcherPath);
 		}
 	};
 
@@ -252,7 +254,10 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 
 		// Replace this with an approach that will make sure that the process is up and
 		// running forever.
-		Thread.sleep(1000000);
+		while(true){
+			
+		}
+		
 		// Thread t = new Thread(dt);
 		// t.start();
 		// while(t.isAlive()){
