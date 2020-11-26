@@ -95,13 +95,13 @@ public class DistProcess implements Watcher, AsyncCallback.ChildrenCallback {
 
 						String assignableTask = "";
 						if (freeTasks.size() != 0) {
-							System.out.print("Idle Worker found: " + worker);
+							System.out.println("DISTAPP : Idle Worker found: " + worker);
 							assignableTask = freeTasks.get(0);
 							byte[] taskSerial = zk.getData("/dist40/unassignedTasks/" + assignableTask, false, null);
 							zk.delete("/dist40/unassignedTasks/" + assignableTask, -1, null, null);
 							zk.create("/dist40/workers/" + worker + "/" + assignableTask, taskSerial,
 									Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-							System.out.println("Worker: " + worker + " was assigned task: " + assignableTask);
+							System.out.println("DISTAPP : Worker: " + worker + " was assigned task: " + assignableTask);
 						}
 					}
 					delegateWorkers();
